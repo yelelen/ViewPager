@@ -9,6 +9,7 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 
 import java.util.ArrayList;
 
@@ -18,6 +19,9 @@ public class MainActivity extends Activity {
     private View[] mViews = new View[mViewIds.length];
     ArrayList<ImageView> mIndicators = new ArrayList<>();
     private int lastClicked = 0;
+    private int pWidth = 0; // 两个点之间的距离
+    private View mSelectPoint;
+    private LinearLayout ll;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,19 +30,18 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         mPager = (ViewPager)findViewById(R.id.pager);
-        LinearLayout ll = (LinearLayout)findViewById(R.id.indicator);
+        ll = (LinearLayout)findViewById(R.id.indicator);
+        mSelectPoint = findViewById(R.id.select_point);
 
         MyClickListener listener = new MyClickListener();
 
         for (int i = 0; i < mViewIds.length; i++){
             mViews[i] = getLayoutInflater().inflate(mViewIds[i],null);
             ImageView iv = new ImageView(this);
-            if (i == 0) {
-                iv.setImageResource(R.drawable.shape_selected);
-            } else {
-                iv.setImageResource(R.drawable.shape_normal);
+            if (i != 0) {
+                iv.setPadding(DensityUtils.dp2px(this, 30), 0, 0, 0);
             }
-            iv.setPadding(DensityUtils.dp2px(this, 20), 0, 0, 0);
+            iv.setImageResource(R.drawable.shape_normal);
             iv.setOnClickListener(listener);
             iv.setId(i);
             ll.addView(iv);
@@ -47,15 +50,30 @@ public class MainActivity extends Activity {
 
         mPager.setAdapter(new MyPagerAdapter());
         mPager.setOnPageChangeListener(new ViewPager.OnPageChangeListener() {
-            @Override
-            public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
 
+            /**
+             * 当页面正在滚动时 position 当前选中的是哪个页面 positionOffset 比例 positionOffsetPixels 偏移像素
+             */
+            @Override
+            public void onPageScrolled(int position, float positionOffset,
+                                       int positionOffsetPixels) {
+                //获取两个点间的距离,获取一次即可
+                if(pWidth==0) {
+                    pWidth = ll.getChildAt(1).getLeft() - ll.getChildAt(0).getLeft() ;
+                }
+
+
+                // 获取点要移动的距离
+                int leftMargin = (int) (pWidth * (position + positionOffset));
+                // 给红点设置参数
+                RelativeLayout.LayoutParams params = (android.widget.RelativeLayout.LayoutParams) mSelectPoint
+                        .getLayoutParams();
+                params.leftMargin = leftMargin << 1;
+                mSelectPoint.setLayoutParams(params);
             }
 
             @Override
             public void onPageSelected(int position) {
-                mIndicators.get(lastClicked).setImageResource(R.drawable.shape_normal);
-                mIndicators.get(position).setImageResource(R.drawable.shape_selected);
                 lastClicked = position;
 
             }
@@ -99,8 +117,6 @@ public class MainActivity extends Activity {
         @Override
         public void onClick(View v) {
             if (v.getId() != lastClicked){
-                ((ImageView)v).setImageResource(R.drawable.shape_selected);
-                mIndicators.get(lastClicked).setImageResource(R.drawable.shape_normal);
                 lastClicked = v.getId();
                 mPager.setCurrentItem(v.getId());
             }
